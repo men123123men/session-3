@@ -30,13 +30,11 @@ public class AccountServiceImpl implements AccountService {
         if (Objects.nonNull(find(accountID)))
             return Result.ALREADY_EXISTS;
 
-
-        if (clientAccountIDs.containsKey(clientID))
-            clientAccountIDs.get(clientID).add(accountID);
-        else
-            clientAccountIDs.put(accountID,new HashSet<>(List.of(accountID)));
+        clientAccountIDs.putIfAbsent(clientID,new HashSet<>());
+        clientAccountIDs.get(clientID).add(accountID);
 
         accounts.put(accountID,new Account(clientID, accountID, currency, initialBalance));
+
         return Result.OK;
     }
 
@@ -54,7 +52,7 @@ public class AccountServiceImpl implements AccountService {
         long operationID = payment.getOperationID();
         long paymentID   = payment.getPayerID();
         long recipientID = payment.getRecipientID();
-        float amount = payment.getAmount();
+        float amount     = payment.getAmount();
 
         Account payerAccount     = find(payment.getPayerAccountID());
         Account recipientAccount = find(payment.getRecipientAccountID());
@@ -83,7 +81,7 @@ public class AccountServiceImpl implements AccountService {
         Currency recipientCurrency = recipientAccount.getCurrency();
 
         float addToRecipientBalance =
-                (payerCurrency == recipientCurrency) ? amount: payerCurrency.to(amount, recipientCurrency);
+                (payerCurrency == recipientCurrency) ? amount : payerCurrency.to(amount, recipientCurrency);
 
         payerAccount.setBalance(payerBalance - amount);
         recipientAccount.setBalance(recipientBalance + addToRecipientBalance);
@@ -92,8 +90,6 @@ public class AccountServiceImpl implements AccountService {
     }
 
     private boolean isPayerIdExists(long payerID) {
-        return accounts.values().stream()
-                .map(Account::getClientID)
-                .anyMatch(id->id==payerID);
+        return clientAccountIDs.containsKey(payerID);
     }
 }
